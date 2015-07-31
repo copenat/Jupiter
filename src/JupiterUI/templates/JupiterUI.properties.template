@@ -1,0 +1,4 @@
+[DEFAULT]
+jupiter_server_host = ${jupiter_http_host}$
+jupiter_server_port = ${jupiter_http_port}$
+jupiter_title = ${jupiter_window_title}$
