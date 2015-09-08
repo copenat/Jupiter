@@ -25,16 +25,15 @@ if [ -f "$_property_dir/grid.properties" ]; then
     source $_property_dir/grid.properties
 fi
 
-# if property file is in dos format then convert to unix style
-host=`echo ${jupiter_http_host} | tr -d '\r'`
-port=`echo ${jupiter_http_port} | tr -d '\r'`
+host=${jupiter_http_host}
+port=${jupiter_http_port}
 
 export empty_dbfile=$_whence/../db/jupiterdb.sqlite3
 
 # The live version of this db will be stored locally
-export dbfile=$HOME/db/jupiterdb.sqlite3
+export dbfile=$HOME/db/jupiterdb.$port.sqlite3
 
-export logfile=$HOME/logs/JupiterServer.$$.log
+export logfile=$HOME/logs/JupiterServer.$port.$$.log
 
 cd $_whence/../web
 $_python/python3 manage.py runserver $host:$port
