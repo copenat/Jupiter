@@ -44,28 +44,29 @@ class JupiterUIApp(tkinter.Tk):
         logging.debug("Get portfolio {0}".format(self.e.option_chosen.get()))
         try:
             r = requests.get("{0}/portfolio/{1}/".format(self._get_url(), self.e.option_chosen.get()))
-            if r.status_code == 200:
-                logging.debug(r.text)
-                prtf_data = r.json()
-                row = 1
-                self.p.set(prtf_data['name'], prtf_data['description'])
-                try:
-                    for p in prtf_data['stocks']:
-                        try:
-                            self.t.set(row, 0, p['symbol'])
-                            self.t.set(row, 1, p['latestactivity']['lasttradeprice'])
-                            self.t.set(row, 2, p['latestactivity']['index'])
-                            self.t.set(row, 3, p['latestactivity']['lasttradedatetime'])
-                            self.t.set(row, 4, p['latestactivity']['stockid'])
-                            self.t.set(row, 5, p['description'])
-                            row += 1
-                        except Exception as e:
-                            logging.info("Problem with stock data. {0}\n{1}".format(e, prtf_data['stocks']))
-                except:
-                    logging.info("No stock data available. {0}".format(e))
-        except Exception as e:
-            logging.info("Unable to contact Jupiter Server : {0}".format(e))
-            sys.exit(1)
+        except Exception as g:
+            logging.info("Unable to contact Jupiter Server : {0}".format(g))
+            return
+
+        if r.status_code == 200:
+            logging.debug(r.text)
+            prtf_data = r.json()
+            row = 1
+            self.p.set(prtf_data['name'], prtf_data['description'])
+            try:
+                for p in prtf_data['stocks']:
+                    try:
+                        self.t.set(row, 0, p['symbol'])
+                        self.t.set(row, 1, p['latestactivity']['lasttradeprice'])
+                        self.t.set(row, 2, p['latestactivity']['index'])
+                        self.t.set(row, 3, p['latestactivity']['lasttradedatetime'])
+                        self.t.set(row, 4, p['latestactivity']['stockid'])
+                        self.t.set(row, 5, p['description'])
+                        row += 1
+                    except Exception as e:
+                        logging.info("Problem with stock data. {0}\n{1}".format(e, prtf_data['stocks']))
+            except Exception as f:
+                logging.info("No stock data available. {0}".format(f))
 
     def get_all_portfolios(self):
         self.portfolios = []
@@ -160,7 +161,7 @@ if __name__ == "__main__":
     logging.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s',
                         level=logging.DEBUG,
                         filename=os.path.join(logfiledir,
-                                              "JupiterUI.log".format(config.get("DEFAULT", "jupiter_server_port"))),
+                                              "JupiterUI.{0}.log".format(config.get("DEFAULT", "jupiter_server_port"))),
                         datefmt='%Y%m%d %H:%M:%S')
 
     logging.info("Starting JupiterUI...")
