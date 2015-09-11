@@ -8,8 +8,42 @@ import os.path
 import logging
 
 
+class PortfolioData:
+    def __init__(self, url):
+        self.url = url
+
+    def get(self, portfolio):
+        try:
+            r = requests.get("{0}/portfolio/{1}/".format(self.url, portfolio))
+            if r.status_code == 200:
+                logging.info(r.text)
+                return r.json
+            else:
+                return {}
+        except Exception as e:
+            logging.info("Unable to connect to Jupiter Server at {0} to get portfolio {1}".format(self.url, portfolio))
+            return {}
+
+
+class PortfolioList:
+    def __init__(self, url):
+        self.portfolios = []
+        self.url = url
+
+    def get(self):
+        try:
+            r = requests.get("{0}/portfolio/".format(self.url))
+            if r.status_code == 200:
+                prtf_data = r.json()
+                for p in prtf_data:
+                    self.portfolios.append(p['name'])
+        except Exception as e:
+            logging.info("Unable to connect to Jupiter Server at {0}".format(self.url))
+            self.portfolios.append("empty")
+        return self.portfolios
+
 class JupiterUIApp(tkinter.Tk):
-    def __init__(self, config):
+    def __init__(self, config, portfoliolist=PortfolioList):
         try:
             self.server_host = config.get("DEFAULT", "jupiter_server_host")
         except:
@@ -19,6 +53,7 @@ class JupiterUIApp(tkinter.Tk):
         except:
             self.server_port = "8090"
 
+        self.portfoliodata_class = PortfolioData
         tkinter.Tk.__init__(self)
         try:
             self.title(config.get("DEFAULT", "jupiter_title"))
@@ -30,61 +65,51 @@ class JupiterUIApp(tkinter.Tk):
         self.wm_iconbitmap(os.path.join(dir, "favicon.ico"))
         self.configure(background="#000000")
 
-        self.get_all_portfolios()
+        self.portfolios = portfoliolist(self._get_url()).get()
+        logging.debug("Got portfolios: {0}".format(self.portfolios))
 
         self.t = PortfolioTable(self)
         self.e = ChoosePortfolio(self, self.portfolios)
-        self.p = Portfolio(self)
+        self.b = PortfolioBanner(self)
 
         self.e.pack(side="top", fill="x", expand=True)
-        self.p.pack(fill="x", expand=True, anchor="center")
+        self.b.pack(fill="x", expand=True, anchor="center")
         self.t.pack(side="top", fill="x", expand=True)
+
+    def _set_portfoliodata(self, prftdata):
+        self.portfoliodata_class = prftdata
 
     def go_pressed(self):
         logging.debug("Get portfolio {0}".format(self.e.option_chosen.get()))
         try:
-            r = requests.get("{0}/portfolio/{1}/".format(self._get_url(), self.e.option_chosen.get()))
+            prtf_data = self.portfoliodata_class(self._get_url()).get(self.e.option_chosen.get())
         except Exception as g:
             logging.info("Unable to contact Jupiter Server : {0}".format(g))
             return
 
-        if r.status_code == 200:
-            logging.debug(r.text)
-            prtf_data = r.json()
-            row = 1
-            self.p.set(prtf_data['name'], prtf_data['description'])
-            try:
-                for p in prtf_data['stocks']:
-                    try:
-                        self.t.set(row, 0, p['symbol'])
-                        self.t.set(row, 1, p['latestactivity']['lasttradeprice'])
-                        self.t.set(row, 2, p['latestactivity']['index'])
-                        self.t.set(row, 3, p['latestactivity']['lasttradedatetime'])
-                        self.t.set(row, 4, p['latestactivity']['stockid'])
-                        self.t.set(row, 5, p['description'])
-                        row += 1
-                    except Exception as e:
-                        logging.info("Problem with stock data. {0}\n{1}".format(e, prtf_data['stocks']))
-            except Exception as f:
-                logging.info("No stock data available. {0}".format(f))
-
-    def get_all_portfolios(self):
-        self.portfolios = []
+        logging.info(prtf_data)
+        row = 1
+        self.b.set(prtf_data['name'], prtf_data['description'])
         try:
-            r = requests.get("{0}/portfolio/".format(self._get_url()))
-            if r.status_code == 200:
-                prtf_data = r.json()
-                for p in prtf_data:
-                    self.portfolios.append(p['name'])
-        except Exception as e:
-            logging.info("Unable to connect to Jupiter Server at {0}".format(self._get_url()))
-            sys.exit(1)
+            for p in prtf_data['stocks']:
+                try:
+                    self.t.set(row, 0, p['symbol'])
+                    self.t.set(row, 1, p['latestactivity']['lasttradeprice'])
+                    self.t.set(row, 2, p['latestactivity']['index'])
+                    self.t.set(row, 3, p['latestactivity']['lasttradedatetime'])
+                    self.t.set(row, 4, p['latestactivity']['stockid'])
+                    self.t.set(row, 5, p['description'])
+                    row += 1
+                except Exception as e:
+                    logging.info("Problem with stock data. {0}\n{1}".format(e, prtf_data['stocks']))
+        except Exception as f:
+            logging.info("No stock data available. {0}".format(f))
 
     def _get_url(self):
         return "http://{0}:{1}".format(self.server_host, self.server_port)
 
 
-class Portfolio(tkinter.Frame):
+class PortfolioBanner(tkinter.Frame):
     def __init__(self, parent):
         tkinter.Frame.__init__(self, parent, background="black")
         self.prtf = tkinter.Label(self, text="My portfolio", bg="#000000", fg="#FFFFFF", font=("Helvetica", 16))
@@ -112,8 +137,9 @@ class ChoosePortfolio(tkinter.Frame):
         self.option = tkinter.OptionMenu(self, self.option_chosen, *self.portfolios)
         self.option.pack(side="left")
 
-        self.btn = tkinter.Button(self, text="Go", bg="#000000", fg="#FFFFFF", command=parent.go_pressed)
+        self.btn = tkinter.Button(self, name="go", text="Go", bg="#000000", fg="#FFFFFF", command=parent.go_pressed)
         self.btn.pack(side='left')
+
 
 
 class PortfolioTable(tkinter.Frame):
@@ -169,4 +195,3 @@ if __name__ == "__main__":
     app = JupiterUIApp(config)
     app.mainloop()
 
-import json.tool
