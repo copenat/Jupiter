@@ -17,7 +17,7 @@ class PortfolioData:
             r = requests.get("{0}/portfolio/{1}/".format(self.url, portfolio))
             if r.status_code == 200:
                 logging.info(r.text)
-                return r.json
+                return r.json()
             else:
                 return {}
         except Exception as e:
